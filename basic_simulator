@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+
+    <script>
+        //These are the global variables
+
+        var agents = []; //Agents queue
+
+        var messages = []; //Messages queue
+
+        var event_time = 0.0; // This variable changes its value in runtime in order to increase the time
+
+        var simulation_time = 5.0; //This variable means the end time for the simulation
+
+        var delay = 5000; //Delay time between timesteps
+
+        var time_increment = 0.1; //Time which increases each time step 
+
+         //END-GLOBAL VARIABLES
+
+         ///SIMULATION-START
+        function simulation() { //This function runs the simulation 
+
+            timer(); //This is a recursive function where the time increase and runs the time step
+
+        } ///SIMULATION-END
+
+         ///TIMER-START
+        function timer() { //This is a recursive function which runs until simulation_time variable
+
+            if (event_time <= simulation_time) { //While simulation time is <= event time the simulator still running
+
+                timeStep(); //Runs time step
+
+                event_time += time_increment; //Increment the simulation time
+
+                setTimeout(timer, delay); //This time out is just for delaying
+
+            }
+        } ///TIMER-END
+
+         ///TIMESTEP-START
+        function timeStep() {
+
+            print_console(); //Print in console the state of the agents, messages and time
+
+            process(); //Runs all the procesess involves in each time step
+
+        } ///TIMESTEP-END
+
+         ///CONSOLE VISUALIZATION
+
+        function print_console() { //Prints all the state of the system 
+
+            print_agents();
+            print_messages();
+            print_timeStep();
+
+        }
+
+        function print_timeStep() { //Prints just the simulation time
+
+            console.log(event_time.toFixed(1) + "|");
+        }
+
+        function print_agents() { //Prints just the state of the agents
+            var i;
+            for (i = 0; i < agents.length; i++) {
+                console.log(JSON.stringify(agents[i]));
+            }
+        }
+
+        function print_messages() { //Prints just the state of the messages
+            var i;
+            for (i = 0; i < messages.length; i++) {
+                console.log(JSON.stringify(messages[i]));
+            }
+        }
+
+        function server_agent(id, name, cpu, memory) { //Add a server agent in the agents queue and initialize it
+
+            //Define the server object 
+            var server = {
+                id: 0,
+                name: "",
+                cpu: 0,
+                memory: 0,
+                cpu_max: 0,
+                memory_max: 0,
+                tasks_in: 0,
+                tasks_out: 0,
+                works_in_queue: []
+            };
+
+            //Initialize with parameters
+            server.id = id;
+            server.name = name;
+            server.cpu = cpu;
+            server.memory = memory;
+
+            agents.push(server); //Add to the agents queue
+
+        }
+
+        function task_message(id_server_a, id_server_b, cpu, memory, time) { //
+
+            //Define the task object 
+            var task = {
+                id_server_a: 0,
+                id_server_b: 0,
+                cpu: 0,
+                memory: 0,
+                time: 0,
+                status: 0
+            };
+
+            //Initialize with parameters
+            task.id_server_a = id_server_a;
+            task.id_server_b = id_server_b;
+            task.cpu = cpu;
+            task.memory = memory;
+            task.time = time;
+
+
+            messages.push(task); //Add to the messages queue
+
+        }
+
+
+        function process() { //Verifies if there are agents and messages, and processes them.
+
+
+            if (agents.length > 0) {
+
+                //This is a slot for processing something, 
+                //for example when servers have to processing the state of the messages.
+
+            } else {
+
+                console.log("NO AGENTS");
+
+            }
+
+            if (messages.length > 0) {
+
+                process_messages(); //Processes the messages in the queue, it means, runs the tasks.
+
+            } else {
+
+                console.log("NO MESSAGES");
+
+            }
+
+        }
+
+        function process_messages() {
+
+            decreases_task_time(); //Decreases the task time for all the tasks in the messages queue
+
+            run_messages(); //Runs the task in the servers agents
+
+            pop_task_completed(); //If the task is completed, then delete it from the messages queue
+
+        }
+
+        function run_messages() {
+
+            var i;
+
+            for (i = 0; i < messages.length; i++) { //This cycle runs all the messages in queue 
+
+                if (messages[i].status != 1) { //If the message is still not running, then run it.
+                    
+                    var id_a = messages[i].id_server_a;
+                    var id_b = messages[i].id_server_b;
+
+                    //Looking for its respective servers
+                    var index_server_a = find_server(id_a);
+                    var index_server_b = find_server(id_b);
+
+                    //Once it founds its servers then runs the process in them
+                    update_agents_status(index_server_a, index_server_b, messages[i].cpu, messages[i].memory, messages[i].status);
+
+                    messages[i].status = 1; //Modifies the status of the message in order to know which messages are running
+
+                }
+
+            }
+
+        }
+
+
+         //This function is proccesing the task in the servers  
+        function update_agents_status(index_server_a, index_server_b, task_cpu, task_memory, task_status) {
+
+                agents[index_server_a].tasks_out++; //Increase the counter for the out messages
+                agents[index_server_b].tasks_in++; //Increase the counter for the in messages
+
+                agents[index_server_b].cpu += task_cpu;//Modifies the cpu resource based on the task
+                agents[index_server_b].memory += task_memory;//Modifies the memory resource based on the task
+
+        }
+
+
+
+        function find_server(id_server) { //Retrieves the server by Id
+
+            var i;
+
+            for (i = 0; i < agents.length; i++) {//Search in all the agents
+
+
+                if (agents[i].id == id_server) {//If the id match, then return the server index in the agents queue
+
+                    return i;
+                    break;
+
+                }
+
+            }
+
+        }
+
+        function pop_task_completed() {//Deletes the task when is completed 
+
+            var i;
+
+            for (i = 0; i < messages.length; i++) {//Evaluates all the messages looking for completed ones
+
+                if (messages[i].time <= 0) {
+
+                    delete_task_process(messages[i]);//If the task time is ended then delete it from the servers
+
+                    messages.splice(i, 1);//Pop the task from the queue  
+
+                }
+            }
+
+        }
+
+        function delete_task_process(task) {//Deletes the task resources from the servers 
+
+            //Looking for the servers which are using resources
+            var id_a = task.id_server_a;
+            var id_b = task.id_server_b;
+            var index_server_b = find_server(id_b);
+            var index_server_a = find_server(id_a);
+            
+            //Modifies the resources state, deleting the resources occupied by the task
+            agents[index_server_b].cpu -= task.cpu;
+            agents[index_server_b].memory -= task.memory;
+            agents[index_server_b].tasks_in--;
+            agents[index_server_a].tasks_out--;
+
+        }
+
+        function decreases_task_time() {
+
+            var i;
+
+            for (i = 0; i < messages.length; i++) { //Decreases the task time
+                messages[i].time -= 0.1;
+            }
+
+        }
+    </script>
+
+</body>
+
+</html>
