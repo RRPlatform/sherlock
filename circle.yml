@@ -1,0 +1,3 @@
+version: 2
+jobs:
+    build: {docker: [{image: 'circleci/node:7'}], steps: [checkout, {run: 'npm install'}, {run: 'node NameOfStartFile.js'}, {store_artifacts: {path: ./Nameofoutputfile.js}}]}
